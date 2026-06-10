@@ -1,0 +1,16 @@
+torch
+torchaudio
+torchvision
+transformers
+datasets
+librosa
+scipy
+pydub
+grad-cam
+scikit-learn
+pandas
+numpy
+matplotlib
+pyyaml
+wandb
+gradio
