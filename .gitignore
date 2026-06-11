@@ -1,0 +1,22 @@
+# Environments
+.env
+.venv
+env/
+venv/
+__pycache__/
+
+# Data and Weights
+data/real/*
+data/fake/*
+data/compressed/*
+weights/*
+*.wav
+*.mp3
+*.pt
+*.pth
+
+# Jupyter
+.ipynb_checkpoints
+
+# OS generated files
+.DS_Store
