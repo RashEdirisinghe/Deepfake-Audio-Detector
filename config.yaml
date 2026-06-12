@@ -1,0 +1,20 @@
+project:
+  name: "Compression-Aware Audio Deepfake Detection"
+  languages: ["sinhala", "tamil"]
+
+audio:
+  sample_rate: 16000
+  n_mels: 128
+  hop_length: 512
+  n_fft: 2048
+
+data_paths:
+  real_raw: "data/real"
+  fake_raw: "data/fake"
+  compressed: "data/compressed"
+  manifest_csv: "data/dataset_manifest.csv"
+
+training:
+  batch_size: 16
+  epochs: 20
+  learning_rate: 0.0001
