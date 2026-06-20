@@ -1,7 +1,6 @@
 import os
-import torch
-import scipy.io.wavfile
-from transformers import VitsModel, AutoTokenizer
+from gtts import gTTS
+from pydub import AudioSegment
 from src.utils.logger import get_logger
 
 logger = get_logger("sinhala_tts")
@@ -9,25 +8,28 @@ logger = get_logger("sinhala_tts")
 
 def generate_sinhala_audio(text_samples, output_dir="data/fake/sinhala"):
     os.makedirs(output_dir, exist_ok=True)
-
-    logger.info("Loading Meta MMS Sinhala TTS model...")
-    model_name = "facebook/mms-tts-sin"
-    model = VitsModel.from_pretrained(model_name)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    sample_rate = model.config.sampling_rate
+    logger.info("Using Google TTS for Sinhala synthetic generation...")
 
     for idx, text in enumerate(text_samples):
-        inputs = tokenizer(text, return_tensors="pt")
-        with torch.no_grad():
-            output = model(**inputs).waveform
-
+        temp_mp3 = os.path.join(output_dir, f"temp_{idx}.mp3")
         file_path = os.path.join(output_dir, f"fake_sin_{idx + 1:04d}.wav")
-        scipy.io.wavfile.write(file_path, rate=sample_rate, data=output[0].cpu().numpy())
-        logger.info(f"Generated synthetic Sinhala audio: {file_path}")
+
+        # 1. Generate audio in Sinhala natively
+        tts = gTTS(text=text, lang='si')
+        tts.save(temp_mp3)
+
+        # 2. Convert the MP3 to a 16kHz mono WAV file
+        audio = AudioSegment.from_mp3(temp_mp3)
+        audio = audio.set_frame_rate(16000).set_channels(1)
+        audio.export(file_path, format="wav")
+
+        # 3. Clean up the temp file
+        os.remove(temp_mp3)
+
+        logger.info(f"Generated true Sinhala synthetic audio: {file_path}")
 
 
 if __name__ == "__main__":
-    # Test sentences in Sinhala
     sample_texts = [
         "ආයුබෝවන්, මෙය පරීක්ෂණ සටහනකි.",
         "කෘතිම බුද්ධිය මගින් ශ්‍රව්‍ය උත්පාදනය කිරීම."
