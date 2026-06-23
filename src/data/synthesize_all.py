@@ -1,27 +1,93 @@
-from src.data.generate_tamil_fakes import generate_tamil_audio
-from src.data.generate_sinhala_fakes import generate_sinhala_audio
+import os
+import csv
+import pandas as pd
+from src.data.generate_tamil_synthetic import generate_tamil_audio
+from src.data.generate_sinhala_synthetic import generate_sinhala_audio
 from src.utils.logger import get_logger
 
 logger = get_logger("batch_synthesizer")
 
 
-def run_synthetic_pipeline():
-    logger.info("=== Starting Synthetic Audio Generation Pipeline ===")
+def write_manifest(rows, manifest_path):
+    """Writes the generated metadata to a CSV manifest."""
+    os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
+    with open(manifest_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["file_path", "language", "text", "label", "generator", "source", "compression_level"],
+        )
+        writer.writeheader()
+        writer.writerows(rows)
 
-    tamil_prompts = [
-        "வணக்கம், இது ஒரு சோதனை.",
-        "செயற்கை நுண்ணறிவு தொழில்நுட்பம் வேகமாக வளர்ந்து வருகிறது."
-    ]
-    sinhala_prompts = [
-        "ආයුබෝවන්, මෙය පරීක්ෂණ සටහනකි.",
-        "කෘතිම බුද්ධිය මගින් ශ්‍රව්‍ය උත්පාදනය කිරීම."
-    ]
 
-    generate_tamil_audio(tamil_prompts)
-    generate_sinhala_audio(sinhala_prompts)
+def build_language_rows(output_dir, language, texts, generator_name):
+    """Formats the metadata for each generated file."""
+    rows = []
+    prefix = "fake_tam" if language == "Tamil" else "fake_sin"
+    for idx, text in enumerate(texts, start=1):
+        rows.append(
+            {
+                "file_path": os.path.join(output_dir, f"{prefix}_{idx:04d}.wav"),
+                "language": language,
+                "text": text,
+                "label": "fake",
+                "generator": generator_name,
+                "source": "synthetic_tts",
+                "compression_level": "clean",
+            }
+        )
+    return rows
 
-    logger.info("=== Synthetic Generation Complete ===")
+
+def generate_from_csv(csv_path, language, output_dir, generator_name, sample_limit=2000):
+    """Reads real transcripts, generates fake audio, and returns metadata rows."""
+    if not os.path.exists(csv_path):
+        logger.warning(f"Manifest not found at {csv_path}. Waiting for real dataset downloads!")
+        return []
+
+    try:
+        df = pd.read_csv(csv_path)
+        if 'sentence' not in df.columns:
+            logger.error(f"Could not find 'sentence' column in {csv_path}")
+            return []
+
+        sentences = df['sentence'].dropna().tolist()[:sample_limit]
+        logger.info(f"Loaded {len(sentences)} unique text prompts for {language}...")
+
+        os.makedirs(output_dir, exist_ok=True)
+
+        if language.lower() == "tamil":
+            generate_tamil_audio(sentences, output_dir=output_dir)
+        elif language.lower() == "sinhala":
+            generate_sinhala_audio(sentences, output_dir=output_dir)
+
+        return build_language_rows(output_dir, language.capitalize(), sentences, generator_name)
+
+    except Exception as e:
+        logger.error(f"Failed to process dataset manifest: {e}")
+        return []
 
 
 if __name__ == "__main__":
-    run_synthetic_pipeline()
+    logger.info("=== Starting Mass Synthetic Audio Generation & Indexing ===")
+
+    tamil_csv_path = "data/real/tamil_transcripts.csv"
+    sinhala_csv_path = "data/real/sinhala_transcripts.csv"
+    manifest_path = "data/metadata/synthetic_manifest.csv"
+
+    all_rows = []
+
+    # Generate Tamil
+    tamil_rows = generate_from_csv(tamil_csv_path, "tamil", "data/fake/tamil", "facebook/mms-tts-tam", 2000)
+    all_rows.extend(tamil_rows)
+
+    # Generate Sinhala
+    sinhala_rows = generate_from_csv(sinhala_csv_path, "sinhala", "data/fake/sinhala", "gTTS-si", 2000)
+    all_rows.extend(sinhala_rows)
+
+    # Save the awesome manifest you created!
+    if all_rows:
+        write_manifest(all_rows, manifest_path)
+        logger.info(f"Manifest saved to {manifest_path}")
+
+    logger.info("=== Mass Generation Process Completed ===")
