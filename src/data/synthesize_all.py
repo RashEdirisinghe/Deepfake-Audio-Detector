@@ -20,22 +20,30 @@ def write_manifest(rows, manifest_path):
         writer.writerows(rows)
 
 
-def build_language_rows(output_dir, language, texts, generator_name):
-    """Formats the metadata for each generated file."""
+def build_language_rows(output_dir, language, texts, generator_name, generated_files):
+    """Formats the metadata ONLY for files that actually generated successfully."""
     rows = []
     prefix = "fake_tam" if language == "Tamil" else "fake_sin"
+
     for idx, text in enumerate(texts, start=1):
-        rows.append(
-            {
-                "file_path": os.path.join(output_dir, f"{prefix}_{idx:04d}.wav"),
-                "language": language,
-                "text": text,
-                "label": "fake",
-                "generator": generator_name,
-                "source": "synthetic_tts",
-                "compression_level": "clean",
-            }
-        )
+        expected_path = os.path.join(output_dir, f"{prefix}_{idx:04d}.wav")
+
+        # EDGE CASE SOLVED: Check against the list of successful files!
+        if expected_path in generated_files:
+            rows.append(
+                {
+                    "file_path": expected_path,
+                    "language": language,
+                    "text": text,
+                    "label": "fake",
+                    "generator": generator_name,
+                    "source": "synthetic_tts",
+                    "compression_level": "clean",
+                }
+            )
+        else:
+            logger.warning(f"Skipping manifest entry for {expected_path} (Generation failed)")
+
     return rows
 
 
@@ -56,12 +64,16 @@ def generate_from_csv(csv_path, language, output_dir, generator_name, sample_lim
 
         os.makedirs(output_dir, exist_ok=True)
 
+        # Capture the successful files returned by your optimized scripts
         if language.lower() == "tamil":
-            generate_tamil_audio(sentences, output_dir=output_dir)
+            successful_files = generate_tamil_audio(sentences, output_dir=output_dir)
         elif language.lower() == "sinhala":
-            generate_sinhala_audio(sentences, output_dir=output_dir)
+            successful_files = generate_sinhala_audio(sentences, output_dir=output_dir)
+        else:
+            successful_files = []
 
-        return build_language_rows(output_dir, language.capitalize(), sentences, generator_name)
+        # Pass the successful files into the row builder
+        return build_language_rows(output_dir, language.capitalize(), sentences, generator_name, successful_files)
 
     except Exception as e:
         logger.error(f"Failed to process dataset manifest: {e}")
@@ -85,9 +97,9 @@ if __name__ == "__main__":
     sinhala_rows = generate_from_csv(sinhala_csv_path, "sinhala", "data/fake/sinhala", "gTTS-si", 2000)
     all_rows.extend(sinhala_rows)
 
-    # Save the awesome manifest you created!
+    # Save the manifest
     if all_rows:
         write_manifest(all_rows, manifest_path)
-        logger.info(f"Manifest saved to {manifest_path}")
+        logger.info(f"Manifest saved to {manifest_path} with {len(all_rows)} verified records.")
 
     logger.info("=== Mass Generation Process Completed ===")
