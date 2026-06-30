@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from sklearn.metrics import accuracy_score, f1_score
 from src.models.resnet_multitask import AudioDeepfakeResNet
 from src.data.dataset import get_dataloader
 from src.utils.logger import get_logger
@@ -8,69 +9,73 @@ from src.utils.logger import get_logger
 logger = get_logger("training_loop")
 
 
-def train_model(manifest_path, spectrogram_dir, epochs=10, batch_size=16, learning_rate=1e-4):
-    # 1. Setup Device (Use GPU if available)
+def train_and_validate(train_manifest, val_manifest, spectrogram_dir, epochs=10, batch_size=16, learning_rate=1e-4):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Starting training on device: {device}")
 
-    # 2. Initialize Model, Data, and Optimizer
+    # Initialize Model, Data, and Optimizer
     model = AudioDeepfakeResNet(num_compression_classes=3).to(device)
-    dataloader = get_dataloader(manifest_path, spectrogram_dir, batch_size=batch_size)
+    train_loader = get_dataloader(train_manifest, spectrogram_dir, batch_size=batch_size, shuffle=True)
+    val_loader = get_dataloader(val_manifest, spectrogram_dir, batch_size=batch_size, shuffle=False)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
-    # 3. Define the Multi-Task Loss Functions
     criterion_binary = nn.BCEWithLogitsLoss()
     criterion_multi = nn.CrossEntropyLoss()
 
-    logger.info(f"Beginning training for {epochs} epochs...")
+    best_f1 = 0.0
 
-    # 4. The Training Loop
     for epoch in range(epochs):
+        # =======================
+        #      TRAINING PHASE
+        # =======================
         model.train()
         running_loss = 0.0
 
-        for batch_idx, (spectrograms, target_binary, target_comp) in enumerate(dataloader):
-            # Move data to GPU/CPU
-            spectrograms = spectrograms.to(device)
-            target_binary = target_binary.to(device)
-            target_comp = target_comp.to(device)
+        for batch_idx, (spectrograms, target_binary, target_comp) in enumerate(train_loader):
+            spectrograms, target_binary, target_comp = spectrograms.to(device), target_binary.to(
+                device), target_comp.to(device)
 
-            # Zero the gradients
             optimizer.zero_grad()
-
-            # Forward Pass
             out_binary, out_comp = model(spectrograms)
 
-            # Calculate Losses
-            loss_binary = criterion_binary(out_binary, target_binary)
-            loss_comp = criterion_multi(out_comp, target_comp)
-
-            # Combine the losses (you can add weights here later if one task is harder)
-            total_loss = loss_binary + loss_comp
-
-            # Backward Pass and Optimize
-            total_loss.backward()
+            loss = criterion_binary(out_binary, target_binary) + criterion_multi(out_comp, target_comp)
+            loss.backward()
             optimizer.step()
+            running_loss += loss.item()
 
-            running_loss += total_loss.item()
+        # =======================
+        #     VALIDATION PHASE
+        # =======================
+        model.eval()
+        all_rf_preds, all_rf_targets = [], []
 
-            if batch_idx % 10 == 0:
-                logger.info(
-                    f"Epoch [{epoch + 1}/{epochs}] Batch [{batch_idx}/{len(dataloader)}] - Loss: {total_loss.item():.4f}")
+        with torch.no_grad():
+            for spectrograms, target_binary, target_comp in val_loader:
+                spectrograms, target_binary, target_comp = spectrograms.to(device), target_binary.to(
+                    device), target_comp.to(device)
 
-        epoch_loss = running_loss / len(dataloader)
-        logger.info(f"--- Epoch {epoch + 1} Completed | Average Loss: {epoch_loss:.4f} ---")
+                out_binary, _ = model(spectrograms)
 
-    # 5. Save the trained weights
-    torch.save(model.state_dict(), "weights/deepfake_resnet_latest.pth")
-    logger.info("Training complete. Model weights saved to weights/deepfake_resnet_latest.pth")
+                # Convert binary logits to predictions (0 or 1)
+                rf_preds = torch.sigmoid(out_binary).round().cpu().numpy()
+                all_rf_preds.extend(rf_preds)
+                all_rf_targets.extend(target_binary.cpu().numpy())
+
+        # Calculate Metrics
+        val_acc = accuracy_score(all_rf_targets, all_rf_preds)
+        val_f1 = f1_score(all_rf_targets, all_rf_preds, zero_division=0)
+
+        logger.info(
+            f"Epoch {epoch + 1}/{epochs} | Train Loss: {running_loss / len(train_loader):.4f} | Val Acc: {val_acc:.4f} | Val F1: {val_f1:.4f}")
+
+        # Save the best model based on F1-score
+        if val_f1 > best_f1:
+            best_f1 = val_f1
+            torch.save(model.state_dict(), "weights/best_deepfake_resnet.pth")
+            logger.info("--> New best model saved!")
+
+    logger.info("Training complete.")
 
 
 if __name__ == "__main__":
-    # Example usage (will run properly once datasets are fully prepared!)
-    train_model(
-        manifest_path="data/metadata/synthetic_manifest.csv",
-        spectrogram_dir="data/spectrograms",
-        epochs=5
-    )
+    logger.info("Training script ready to run.")
