@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import wandb
 from sklearn.metrics import accuracy_score, f1_score
 from src.models.resnet_multitask import AudioDeepfakeResNet
 from src.data.dataset import get_dataloader
@@ -10,10 +11,21 @@ logger = get_logger("training_loop")
 
 
 def train_and_validate(train_manifest, val_manifest, spectrogram_dir, epochs=10, batch_size=16, learning_rate=1e-4):
+    # 1. Initialize Weights & Biases
+    wandb.init(
+        project="Compression-Aware-Deepfake-Detection",
+        config={
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "learning_rate": learning_rate,
+            "architecture": "ResNet-18 Multitask",
+            "dataset": "Sinhala & Tamil Audio"
+        }
+    )
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Starting training on device: {device}")
 
-    # Initialize Model, Data, and Optimizer
     model = AudioDeepfakeResNet(num_compression_classes=3).to(device)
     train_loader = get_dataloader(train_manifest, spectrogram_dir, batch_size=batch_size, shuffle=True)
     val_loader = get_dataloader(val_manifest, spectrogram_dir, batch_size=batch_size, shuffle=False)
@@ -43,6 +55,9 @@ def train_and_validate(train_manifest, val_manifest, spectrogram_dir, epochs=10,
             optimizer.step()
             running_loss += loss.item()
 
+            # Log batch-level loss to wandb
+            wandb.log({"batch_loss": loss.item()})
+
         # =======================
         #     VALIDATION PHASE
         # =======================
@@ -56,24 +71,32 @@ def train_and_validate(train_manifest, val_manifest, spectrogram_dir, epochs=10,
 
                 out_binary, _ = model(spectrograms)
 
-                # Convert binary logits to predictions (0 or 1)
                 rf_preds = torch.sigmoid(out_binary).round().cpu().numpy()
                 all_rf_preds.extend(rf_preds)
                 all_rf_targets.extend(target_binary.cpu().numpy())
 
-        # Calculate Metrics
         val_acc = accuracy_score(all_rf_targets, all_rf_preds)
         val_f1 = f1_score(all_rf_targets, all_rf_preds, zero_division=0)
+        epoch_loss = running_loss / len(train_loader)
 
         logger.info(
-            f"Epoch {epoch + 1}/{epochs} | Train Loss: {running_loss / len(train_loader):.4f} | Val Acc: {val_acc:.4f} | Val F1: {val_f1:.4f}")
+            f"Epoch {epoch + 1}/{epochs} | Train Loss: {epoch_loss:.4f} | Val Acc: {val_acc:.4f} | Val F1: {val_f1:.4f}")
 
-        # Save the best model based on F1-score
+        # Log epoch-level metrics to wandb
+        wandb.log({
+            "epoch": epoch + 1,
+            "train_loss": epoch_loss,
+            "val_accuracy": val_acc,
+            "val_f1_score": val_f1
+        })
+
         if val_f1 > best_f1:
             best_f1 = val_f1
             torch.save(model.state_dict(), "weights/best_deepfake_resnet.pth")
             logger.info("--> New best model saved!")
 
+    # Close the wandb run
+    wandb.finish()
     logger.info("Training complete.")
 
 
