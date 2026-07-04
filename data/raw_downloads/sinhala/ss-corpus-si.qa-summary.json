@@ -1,0 +1,15 @@
+{
+  "locale": "si",
+  "initial_rows": 59,
+  "disfluency_applied": false,
+  "disfluency_affected_rows": 0,
+  "splitting_applied": true,
+  "splitting_warnings": [
+    "Dataset has only 0 audio clips, which is less than the minimum of 300 required to create splits.",
+    "dataset has only 0 unique speakers, which is less than the minimum of 6 required to create splits"
+  ],
+  "quality_tagging_applied": true,
+  "problem_clips": [],
+  "problem_clip_count": 0,
+  "final_rows": 59
+}
