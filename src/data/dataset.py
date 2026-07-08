@@ -1,6 +1,7 @@
 import os
 import torch
 import pandas as pd
+import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from src.utils.logger import get_logger
 
@@ -8,13 +9,14 @@ logger = get_logger("spectrogram_dataset")
 
 
 class DeepfakeSpectrogramDataset(Dataset):
-    def __init__(self, manifest_path, spectrogram_base_dir):
+    def __init__(self, manifest_path, spectrogram_base_dir, target_length=128):
         """
         Custom PyTorch Dataset for Multi-Task Audio Deepfake Detection.
 
         Args:
             manifest_path (str): Path to the CSV manifest.
             spectrogram_base_dir (str): Root directory where .pt files are stored.
+            target_length (int): Fixed width/length for spectrogram tensors.
         """
         if not os.path.exists(manifest_path):
             logger.error(f"Manifest not found at {manifest_path}. Creating empty dataset.")
@@ -23,6 +25,7 @@ class DeepfakeSpectrogramDataset(Dataset):
             self.manifest = pd.read_csv(manifest_path)
 
         self.spectrogram_base_dir = spectrogram_base_dir
+        self.target_length = target_length
 
         # Label mappings based on project scope
         self.label_map = {"real": 1, "fake": 0}
@@ -51,14 +54,26 @@ class DeepfakeSpectrogramDataset(Dataset):
 
         tensor_path = os.path.join(self.spectrogram_base_dir, folder_type, lang_folder, pt_name)
 
-        # 3. Load Tensor Safely
+        # 3. Load Tensor Safely & Normalize Size
         try:
             spectrogram = torch.load(tensor_path, weights_only=True)
+
+            # Ensure 3D tensor shape [1, 128, length]
+            if spectrogram.dim() == 2:
+                spectrogram = spectrogram.unsqueeze(0)
+
+            # Pad or Crop time dimension (Width) so every tensor is fixed to target_length
+            c, h, w = spectrogram.shape
+            if w < self.target_length:
+                spectrogram = F.pad(spectrogram, (0, self.target_length - w))
+            elif w > self.target_length:
+                spectrogram = spectrogram[:, :, :self.target_length]
+
         except Exception as e:
             # If a tensor is missing, return a dummy tensor so the training loop doesn't crash
-            spectrogram = torch.zeros((1, 128, 128))
+            spectrogram = torch.zeros((1, 128, self.target_length))
 
-            # 4. Format Targets for PyTorch
+        # 4. Format Targets for PyTorch
         # BCEWithLogitsLoss expects float32 for binary targets
         target_binary = torch.tensor([binary_label], dtype=torch.float32)
         # CrossEntropyLoss expects long integers for multi-class targets
@@ -69,7 +84,7 @@ class DeepfakeSpectrogramDataset(Dataset):
 
 def get_dataloader(manifest_path, spectrogram_base_dir, batch_size=16, shuffle=True):
     dataset = DeepfakeSpectrogramDataset(manifest_path, spectrogram_base_dir)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=2)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=0)
 
 
 if __name__ == "__main__":
