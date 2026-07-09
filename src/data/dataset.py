@@ -73,12 +73,18 @@ class DeepfakeSpectrogramDataset(Dataset):
             # If a tensor is missing, return a dummy tensor so the training loop doesn't crash
             spectrogram = torch.zeros((1, 128, self.target_length))
 
-        # 4. Format Targets for PyTorch
-        # BCEWithLogitsLoss expects float32 for binary targets
+        # 4. Format Targets
         target_binary = torch.tensor([binary_label], dtype=torch.float32)
-        # CrossEntropyLoss expects long integers for multi-class targets
         target_compression = torch.tensor(compression_label, dtype=torch.long)
-
+        
+        # --- THE FIX: ON-THE-FLY NOISE INJECTION ---
+        # Inject a small amount of random Gaussian noise (static) into the spectrogram.
+        # This masks the "pure silence" of TTS fakes so the model can't cheat!
+        noise_level = 0.05
+        noise = torch.randn(spectrogram.size()) * noise_level
+        spectrogram = spectrogram + noise
+        # -------------------------------------------
+        
         return spectrogram, target_binary, target_compression
 
 
