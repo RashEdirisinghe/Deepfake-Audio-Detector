@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Deepfake Detector</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 50px; text-align: center; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
+        h1 { color: #333; }
+        input[type="file"] { margin: 20px 0; }
+        button { background-color: #0056b3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #004494; }
+        #results { margin-top: 30px; display: none; }
+        img { max-width: 100%; border-radius: 5px; margin-top: 15px; }
+        .real { color: green; font-weight: bold; }
+        .fake { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Deepfake Audio Detector</h1>
+    <p>Upload a Sinhala or Tamil .wav file to analyze</p>
+
+    <form id="uploadForm">
+        <input type="file" id="audioFile" accept=".wav" required>
+        <br>
+        <button type="submit">Analyze Audio</button>
+    </form>
+
+    <div id="results">
+        <h2>Analysis Complete</h2>
+        <p>Prediction: <span id="predictionText"></span></p>
+        <p>Confidence: <span id="confidenceText"></span></p>
+        <h3>Explainability Heatmap</h3>
+        <img id="heatmapImage" src="" alt="Grad-CAM Heatmap">
+    </div>
+</div>
+
+<script>
+    document.getElementById('uploadForm').onsubmit = async function(e) {
+        e.preventDefault();
+
+        let formData = new FormData();
+        formData.append("file", document.getElementById('audioFile').files[0]);
+
+        // Send the file to our Python Flask backend
+        let response = await fetch('/predict', { method: "POST", body: formData });
+        let result = await response.json();
+
+        if (result.error) {
+            alert(result.error);
+        } else {
+            // Display the results
+            document.getElementById('results').style.display = 'block';
+            let predSpan = document.getElementById('predictionText');
+
+            if (result.prediction === "Real") {
+                predSpan.innerHTML = "<span class='real'>REAL HUMAN SPEECH</span>";
+            } else {
+                predSpan.innerHTML = "<span class='fake'>SYNTHETIC / DEEPFAKE</span>";
+            }
+
+            document.getElementById('confidenceText').innerText = result.confidence + "%";
+            // Add a timestamp query to bypass browser image caching
+            document.getElementById('heatmapImage').src = result.heatmap_url + "?t=" + new Date().getTime();
+        }
+    };
+</script>
+
+</body>
+</html>
