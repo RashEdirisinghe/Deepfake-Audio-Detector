@@ -77,13 +77,21 @@ class DeepfakeSpectrogramDataset(Dataset):
         target_binary = torch.tensor([binary_label], dtype=torch.float32)
         target_compression = torch.tensor(compression_label, dtype=torch.long)
         
-        # --- THE FIX: ON-THE-FLY NOISE INJECTION ---
-        # Inject a small amount of random Gaussian noise (static) into the spectrogram.
-        # This masks the "pure silence" of TTS fakes so the model can't cheat!
-        noise_level = 0.05
-        noise = torch.randn(spectrogram.size()) * noise_level
+        # --- THE FIX 2.0: SPECAUGMENT & NOISE ---
+        import torchaudio
+        
+        # 1. Add background static
+        noise = torch.randn(spectrogram.size()) * 0.05
         spectrogram = spectrogram + noise
-        # -------------------------------------------
+        
+        # 2. SpecAugment: Randomly mask out frequencies and time chunks
+        # This prevents the model from memorizing specific microphone or TTS frequencies
+        if torch.rand(1).item() < 0.7:  # 70% chance to apply
+            freq_mask = torchaudio.transforms.FrequencyMasking(freq_mask_param=20)
+            time_mask = torchaudio.transforms.TimeMasking(time_mask_param=30)
+            spectrogram = freq_mask(spectrogram)
+            spectrogram = time_mask(spectrogram)
+        # ----------------------------------------
         
         return spectrogram, target_binary, target_compression
 
