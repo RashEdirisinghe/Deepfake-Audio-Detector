@@ -2,7 +2,7 @@ import os
 import random
 import glob
 import pandas as pd
-from sklearn.model_selection import GroupShuffleSplit
+from sklearn.model_selection import StratifiedGroupKFold
 from src.utils.logger import get_logger
 
 logger = get_logger("master_manifest")
@@ -72,9 +72,12 @@ def build_master_manifests():
 
     logger.info(f"Total audio samples indexed: {len(df)}")
 
-    # GROUP-BASED SPLIT: Ensures clean & compressed variants of the same file stay together!
-    gss = GroupShuffleSplit(n_splits=1, test_size=0.20, random_state=42)
-    train_idx, val_idx = next(gss.split(df, groups=df['group_id']))
+    # THE FIX: Stratified Group Split (Solves Data Leakage AND Class Imbalance)
+    # n_splits=5 perfectly creates an 80% Train / 20% Val split
+    sgkf = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+    
+    # We use next() to just grab the very first 80/20 fold it creates
+    train_idx, val_idx = next(sgkf.split(df, y=df['label'], groups=df['group_id']))
 
     train_df = df.iloc[train_idx].drop(columns=['group_id'])
     val_df = df.iloc[val_idx].drop(columns=['group_id'])
@@ -86,8 +89,8 @@ def build_master_manifests():
     train_df.to_csv(train_path, index=False)
     val_df.to_csv(val_path, index=False)
 
-    logger.info(f"Strict Group Train split ({len(train_df)} samples) saved to {train_path}")
-    logger.info(f"Strict Group Validation split ({len(val_df)} samples) saved to {val_path}")
+    logger.info(f"Stratified Group Train split ({len(train_df)} samples) saved to {train_path}")
+    logger.info(f"Stratified Group Validation split ({len(val_df)} samples) saved to {val_path}")
 
 if __name__ == "__main__":
     build_master_manifests()
