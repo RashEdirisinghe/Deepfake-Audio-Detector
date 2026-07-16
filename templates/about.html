@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>About — Cadence</title>
+      <meta name="description" content="Project brief: compression-aware, explainable audio deepfake detection for Sinhala and Tamil speech.">
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+      <link rel="stylesheet" href="/static/style.css">
+      <style>
+        .page-hero { padding: 34px 0 50px; }
+        .page-hero .ribbon { --ribbon-h: 40px; margin-bottom: 34px; opacity: 0.75; }
+        .page-hero h1 { max-width: 700px; }
+        .page-hero p.lede { max-width: 620px; }
+
+        .obj-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+        .obj-list li {
+          display: flex; gap: 12px; align-items: flex-start;
+          padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+          font-size: 0.94rem; color: var(--ink-dim);
+        }
+        .obj-list .mono { color: var(--grad-3); flex: 0 0 auto; }
+
+        .arch {
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          align-items: center;
+          gap: 14px;
+          margin-top: 32px;
+        }
+        .arch-col { display: flex; flex-direction: column; gap: 12px; }
+        .arch-box {
+          border: 1px solid var(--border-hi);
+          background: var(--surface);
+          border-radius: var(--radius-sm);
+          padding: 14px 16px;
+          font-size: 0.85rem;
+        }
+        .arch-box .mono { display: block; font-size: 0.68rem; color: var(--muted); margin-bottom: 4px; }
+        .arch-box.head-real { border-color: var(--real); background: var(--real-dim); }
+        .arch-box.head-comp { border-color: var(--warn); background: var(--warn-dim); }
+        .arch-arrow { color: var(--border-hi); font-size: 1.4rem; text-align: center; }
+        @media (max-width: 760px) {
+          .arch { grid-template-columns: 1fr; }
+          .arch-arrow { transform: rotate(90deg); }
+        }
+
+        .eval-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 28px; }
+        @media (max-width: 720px) { .eval-grid { grid-template-columns: 1fr; } }
+        .eval-item { padding: 16px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.9rem; }
+        .eval-item .mono { color: var(--muted); font-size: 0.72rem; display: block; margin-bottom: 6px; }
+      </style>
+    </head>
+    <body>
+
+      <nav class="site-nav">
+        <div class="wrap">
+          <a class="logo" href="index.html">
+            <span class="logo-mark"><span></span><span></span><span></span><span></span></span>
+            Cadence
+          </a>
+          <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+          <div class="nav-links">
+            <a href="index.html" data-page="index.html">Home</a>
+            <a href="about.html" data-page="about.html">About</a>
+            <a href="detect.html" data-page="detect.html">Detector</a>
+            <a class="nav-cta" href="detect.html">Try it →</a>
+          </div>
+        </div>
+      </nav>
+
+      <header class="page-hero wrap">
+        <div class="ribbon animated" data-generate data-bars="56" aria-hidden="true"></div>
+        <p class="eyebrow">Project brief</p>
+        <h1>Compression-aware, explainable deepfake detection for Sinhala &amp; Tamil.</h1>
+        <p class="lede">Audio deepfake detection, robustness testing, multilingual evaluation, and explainability are usually studied separately. This project combines all four for two low-resource South Asian languages, under the kind of lossy compression real messaging audio actually goes through.</p>
+      </header>
+
+      <section class="wrap" style="padding-top:0;">
+        <div class="grid-2">
+          <div class="card">
+            <h3>Problem statement</h3>
+            <p style="font-size:0.94rem; margin-bottom:0;">Most detectors are trained and tested on clean, benchmark-style audio, while real-world speech is compressed, noisy, and language-dependent. Performance is known to drop under codec compression and "in the wild" conditions — and multilingual, explainable detection is still an open problem.</p>
+          </div>
+          <div class="card">
+            <h3>Research gap</h3>
+            <p style="font-size:0.94rem; margin-bottom:0;">Robustness, multilingual evaluation, and explainability each have their own literature — but little work brings all three together for low-resource South Asian languages under realistic compression. Comparing clean versus compressed audio, and checking whether explanations stay stable, is where this project sits.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="wrap">
+        <p class="eyebrow">Objectives</p>
+        <h2>What the system sets out to do</h2>
+        <ul class="obj-list">
+          <li><span class="mono">01</span>Classify Sinhala and Tamil speech as real or synthetic.</li>
+          <li><span class="mono">02</span>Evaluate detection on compressed audio, not just clean recordings.</li>
+          <li><span class="mono">03</span>Generate spectrogram heatmaps that show which regions influenced each prediction.</li>
+          <li><span class="mono">04</span>Measure how reliable the model's confidence scores actually are.</li>
+          <li><span class="mono">05</span>Estimate compression provenance — clean, lightly compressed, or heavily compressed.</li>
+        </ul>
+      </section>
+
+      <section class="wrap">
+        <p class="eyebrow">Model architecture</p>
+        <h2>One backbone, two heads.</h2>
+        <p style="max-width:560px;">A log-Mel spectrogram feeds a CNN / ResNet-18 backbone adapted for single-channel input. Two task-specific heads share that representation, with an optional calibration layer applied to the output.</p>
+
+        <div class="arch">
+          <div class="arch-col">
+            <div class="arch-box"><span class="mono">INPUT</span>log-Mel spectrogram</div>
+            <div class="arch-box"><span class="mono">BACKBONE</span>CNN / ResNet-18, single-channel</div>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-col">
+            <div class="arch-box head-real"><span class="mono">HEAD 1</span>Real / fake classification</div>
+            <div class="arch-box head-comp"><span class="mono">HEAD 2</span>Compression provenance</div>
+            <div class="arch-box"><span class="mono">OPTIONAL</span>Confidence calibration layer</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="wrap">
+        <p class="eyebrow">Data plan</p>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Sources</h3>
+            <p style="font-size:0.94rem; margin-bottom:8px;"><strong style="color:var(--ink);">Real speech —</strong> Sinhala and Tamil recordings from Common Voice or comparable public speech corpora.</p>
+            <p style="font-size:0.94rem; margin-bottom:0;"><strong style="color:var(--ink);">Synthetic speech —</strong> generated with multilingual TTS / voice synthesis tools.</p>
+          </div>
+          <div class="card">
+            <h3>Compression simulation</h3>
+            <p style="font-size:0.94rem; margin-bottom:0;">Low-bitrate, Opus-style compression is applied and decoded back to .wav, producing clean, lightly compressed, and heavily compressed evaluation sets from the same source audio.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="wrap">
+        <p class="eyebrow">Evaluation plan</p>
+        <h2>How results are judged</h2>
+        <div class="eval-grid">
+          <div class="eval-item"><span class="mono">CLASSIFICATION</span>Accuracy, precision, recall, F1-score</div>
+          <div class="eval-item"><span class="mono">FORENSIC</span>Equal Error Rate (EER)</div>
+          <div class="eval-item"><span class="mono">CALIBRATION</span>Expected Calibration Error</div>
+          <div class="eval-item"><span class="mono">ROBUSTNESS</span>Clean vs. compressed performance comparison</div>
+          <div class="eval-item"><span class="mono">EXPLAINABILITY</span>Explanation consistency across compression levels</div>
+        </div>
+      </section>
+
+      <footer class="site-footer">
+        <div class="wrap">
+          <p>Cadence — a research prototype for compression-aware, explainable audio deepfake detection.</p>
+          <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="detect.html">Detector</a>
+          </div>
+        </div>
+      </footer>
+
+      <script src="/static/app.js"></script>
+    </body>
+  </html>
