@@ -2,8 +2,10 @@ import os
 import torch
 import torchaudio
 import torch.nn.functional as F
+import librosa
+import webbrowser
+from threading import Timer
 from flask import Flask, request, jsonify, render_template
-
 from src.models.resnet_multitask import AudioDeepfakeResNet
 from src.models.explain import generate_heatmap
 from src.utils.logger import get_logger
@@ -32,7 +34,6 @@ model.eval()
 
 
 # --- HTML ROUTES ---
-
 @app.route('/')
 @app.route('/index.html')
 def index():
@@ -53,13 +54,11 @@ def detect():
 
 
 # --- API / INFERENCE ROUTE ---
-
 @app.route('/predict', methods=['POST'])
 def predict():
     """Receives audio, runs inference, and generates heatmap."""
     if 'file' not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
-
     file = request.files['file']
     if file.filename == '':
         return jsonify({"error": "No file selected"}), 400
@@ -69,12 +68,9 @@ def predict():
     file.save(temp_audio_path)
 
     try:
-        # 1. Process audio to spectrogram (Must match dataset.py exactly!)
-        waveform, sr = torchaudio.load(temp_audio_path)
-
-        # Resample to 16kHz
-        if sr != 16000:
-            waveform = torchaudio.transforms.Resample(orig_freq=sr, new_freq=16000)(waveform)
+        # --- THE FIX: Use librosa to bypass TorchCodec crashes ---
+        y, sr = librosa.load(temp_audio_path, sr=16000)
+        waveform = torch.tensor(y, dtype=torch.float32).unsqueeze(0)
 
         # Convert to mono
         if waveform.shape[0] > 1:
@@ -93,7 +89,7 @@ def predict():
         elif current_frames > 128:
             log_mel_spec = log_mel_spec[:, :, :128]
 
-        # --- INFERENCE FIX: Z-Score Normalization ---
+        # Z-Score Normalization
         mean = log_mel_spec.mean()
         std = log_mel_spec.std()
         log_mel_spec = (log_mel_spec - mean) / (std + 1e-7)
@@ -136,6 +132,15 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 
+def open_browser():
+    webbrowser.open_new('http://127.0.0.1:5000')
+
+
 if __name__ == '__main__':
     print("🚀 Starting Deepfake Detector Web Interface at http://127.0.0.1:5000")
+
+    # --- THE FIX: Only open the browser on the main thread, not the reloader thread ---
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        Timer(1.25, open_browser).start()
+
     app.run(debug=True)
