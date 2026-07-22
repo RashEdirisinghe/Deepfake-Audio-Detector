@@ -7,31 +7,44 @@ import torchaudio
 import librosa
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
+from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from src.models.resnet_multitask import AudioDeepfakeResNet
 from src.utils.logger import get_logger
 
 logger = get_logger("grad_cam_explainer")
+
+# --- THE FIX: Multi-Task Wrapper ---
+class BinaryHeadWrapper(torch.nn.Module):
+    """Wraps the multi-task model so Grad-CAM only sees the Real/Fake output."""
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+        
+    def forward(self, x):
+        rf_logits, comp_logits = self.model(x)
+        return rf_logits
 
 def generate_heatmap(model_path, audio_path, output_path):
     """Generates a Grad-CAM heatmap for a given audio file."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # 1. Load the trained model
-    model = AudioDeepfakeResNet(num_compression_classes=3).to(device)
+    base_model = AudioDeepfakeResNet(num_compression_classes=3).to(device)
     if os.path.exists(model_path):
-        model.load_state_dict(torch.load(model_path, map_location=device))
-        model.eval()
+        base_model.load_state_dict(torch.load(model_path, map_location=device))
+        base_model.eval()
     else:
         logger.error(f"Model weights not found at {model_path}")
         return
+        
+    # Wrap the model for Grad-CAM
+    wrapped_model = BinaryHeadWrapper(base_model)
 
     # 2. Process the input audio into a spectrogram
     try:
-        # THE FIX: Use librosa to bypass the TorchCodec DLL crash!
         y, sr = librosa.load(audio_path, sr=16000)
         waveform = torch.tensor(y, dtype=torch.float32).unsqueeze(0)
         
-        # Convert stereo to mono if needed
         if waveform.shape[0] > 1:
             waveform = torch.mean(waveform, dim=0, keepdim=True)
             
@@ -40,19 +53,16 @@ def generate_heatmap(model_path, audio_path, output_path):
         )(waveform)
         log_mel_spec = torchaudio.transforms.AmplitudeToDB(stype="power", top_db=80)(mel_spec)
         
-        # Match Training Conditions: Pad/Truncate to exactly 128 frames
         current_frames = log_mel_spec.shape[2]
         if current_frames < 128:
             log_mel_spec = F.pad(log_mel_spec, (0, 128 - current_frames))
         elif current_frames > 128:
             log_mel_spec = log_mel_spec[:, :, :128]
             
-        # Match Training Conditions: Z-Score Normalization
         mean = log_mel_spec.mean()
         std = log_mel_spec.std()
         log_mel_spec = (log_mel_spec - mean) / (std + 1e-7)
 
-        # Add batch dimension: [1, 1, 128, 128]
         input_tensor = log_mel_spec.unsqueeze(0).to(device)
         
     except Exception as e:
@@ -60,24 +70,22 @@ def generate_heatmap(model_path, audio_path, output_path):
         return
 
     # 3. Setup Grad-CAM
-    # We target the last convolutional layer of the ResNet backbone
-    target_layers = [model.backbone.layer4[-1]]
+    target_layers = [base_model.backbone.layer4[-1]]
     
-    # Initialize CAM
-    cam = GradCAM(model=model, target_layers=target_layers)
+    # Initialize CAM using the wrapped model
+    cam = GradCAM(model=wrapped_model, target_layers=target_layers)
+    
+    # We target the single binary output node (index 0)
+    targets = [ClassifierOutputTarget(0)]
     
     # 4. Generate the Heatmap
-    # We ask Grad-CAM to explain the 'fake' class (which is index 0 in our binary setup)
-    grayscale_cam = cam(input_tensor=input_tensor, targets=None)[0, :]
+    grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0, :]
     
-    # Normalize the original spectrogram to act as the background image [0, 1]
     spec_image = input_tensor.squeeze().cpu().numpy()
     spec_image = (spec_image - spec_image.min()) / (spec_image.max() - spec_image.min() + 1e-7)
     
-    # Convert 1-channel to 3-channel RGB for visualization
     spec_image_rgb = np.stack([spec_image]*3, axis=-1)
     
-    # Overlay the heatmap
     visualization = show_cam_on_image(spec_image_rgb, grayscale_cam, use_rgb=True)
     
     # 5. Save the output
@@ -95,7 +103,6 @@ if __name__ == "__main__":
     logger.info("=== Generating Grad-CAM Heatmaps ===")
     model_weights = "weights/best_deepfake_resnet.pth"
     
-    # Check these filenames exist in your directory!
     test_files = [
         ("data/real/tamil/real_00000.wav", "plots/heatmap_real_tamil.png"),
         ("data/fake/tamil/fake_tam_0001.wav", "plots/heatmap_fake_tamil.png"),
