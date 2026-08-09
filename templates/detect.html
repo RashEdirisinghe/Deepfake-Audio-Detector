@@ -1,263 +1,71 @@
 <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Detector — Cadence</title>
-      <meta name="description" content="Upload a Sinhala or Tamil .wav clip and run compression-aware deepfake detection.">
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-      <link rel="stylesheet" href="/static/style.css">
-      <style>
-        .page-hero { padding: 34px 0 40px; }
-        .page-hero .ribbon { --ribbon-h: 40px; margin-bottom: 30px; opacity: 0.75; }
-        .page-hero h1 { max-width: 640px; }
-
-        .tool-layout { display: grid; grid-template-columns: 380px 1fr; gap: 28px; align-items: start; }
-        @media (max-width: 900px) { .tool-layout { grid-template-columns: 1fr; } }
-
-        /* Upload card */
-        .upload-card { position: sticky; top: 90px; }
-        .dropzone {
-          border: 1.5px dashed var(--border-hi);
-          border-radius: var(--radius);
-          padding: 36px 20px;
-          text-align: center;
-          cursor: pointer;
-          transition: border-color 0.15s ease, background 0.15s ease;
-        }
-        .dropzone:hover, .dropzone.drag-over {
-          border-color: var(--grad-3);
-          background: rgba(245, 166, 35, 0.05);
-        }
-        .dropzone svg { margin: 0 auto 14px; display: block; opacity: 0.7; }
-        .dropzone .dz-title { font-weight: 600; color: var(--ink); margin-bottom: 4px; }
-        .dropzone .dz-sub { font-size: 0.82rem; color: var(--muted); }
-
-        .file-chip {
-          display: none;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          margin-top: 16px;
-          padding: 10px 14px;
-          background: var(--bg-soft);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-sm);
-          font-family: var(--font-mono);
-          font-size: 0.82rem;
-        }
-        .file-chip.visible { display: flex; }
-        .file-chip button {
-          background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.95rem; line-height: 1;
-        }
-        .file-chip button:hover { color: var(--fake); }
-
-        .upload-card .btn { width: 100%; margin-top: 18px; }
-
-        .form-error {
-          display: none;
-          margin-top: 14px;
-          padding: 12px 14px;
-          background: var(--fake-dim);
-          border: 1px solid var(--fake);
-          border-radius: var(--radius-sm);
-          color: #FFD3D9;
-          font-size: 0.85rem;
-        }
-        .form-error.visible { display: block; }
-
-        /* Results */
-        .results { display: none; flex-direction: column; gap: 20px; }
-        .results.visible { display: flex; }
-
-        .placeholder-panel {
-          border: 1px solid var(--border);
-          border-radius: var(--radius-lg);
-          padding: 70px 30px;
-          text-align: center;
-          color: var(--muted);
-        }
-        .placeholder-panel .ribbon { --ribbon-h: 34px; max-width: 320px; margin: 0 auto 26px; opacity: 0.5; }
-
-        .verdict-card { display: flex; gap: 28px; flex-wrap: wrap; align-items: center; }
-        .verdict-badge {
-          flex: 0 0 auto;
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          width: 132px; height: 132px;
-          border-radius: 50%;
-          border: 2px solid var(--border-hi);
-          font-family: var(--font-display);
-        }
-        .verdict-badge.real { border-color: var(--real); background: var(--real-dim); color: var(--real); }
-        .verdict-badge.fake { border-color: var(--fake); background: var(--fake-dim); color: var(--fake); }
-        .verdict-badge .vb-label { font-size: 0.95rem; font-weight: 700; letter-spacing: 0.02em; }
-        .verdict-badge .vb-sub { font-size: 0.65rem; color: var(--muted); margin-top: 4px; font-family: var(--font-mono); }
-
-        .verdict-meta { flex: 1 1 240px; min-width: 220px; }
-        .conf-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
-        .conf-value { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 500; }
-        .conf-bar-track { height: 8px; border-radius: 999px; background: var(--surface-hi); overflow: hidden; }
-        .conf-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--grad-1), var(--grad-2), var(--grad-3)); width: 0%; transition: width 0.5s ease; }
-        .verdict-file { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); margin-top: 14px; }
-
-        .heatmap-card img { border-radius: var(--radius-sm); border: 1px solid var(--border); width: 100%; }
-        .heatmap-card figcaption { margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
-
-        .aux-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media (max-width: 640px) { .aux-grid { grid-template-columns: 1fr; } }
-        .aux-card .aux-label { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; display:block; margin-bottom: 10px; }
-        .aux-card .aux-value { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; }
-
-        .stability-imgs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
-        @media (max-width: 560px) { .stability-imgs { grid-template-columns: 1fr; } }
-        .stability-imgs figure { margin: 0; }
-        .stability-imgs img { border-radius: var(--radius-sm); border: 1px solid var(--border); width: 100%; }
-        .stability-imgs figcaption { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); margin-top: 6px; text-align: center; }
-
-        .spinner-panel { display: none; text-align: center; padding: 70px 20px; color: var(--muted); }
-        .spinner-panel.visible { display: block; }
-        .spinner {
-          width: 36px; height: 36px; margin: 0 auto 18px;
-          border-radius: 50%;
-          border: 3px solid var(--surface-hi);
-          border-top-color: var(--grad-3);
-          animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      </style>
-    </head>
-    <body>
-
-      <nav class="site-nav">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector - Cadence</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="site-nav">
         <div class="wrap">
-          <a class="logo" href="index.html">
-            <span class="logo-mark"><span></span><span></span><span></span><span></span></span>
-            Cadence
-          </a>
-          <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
-          <div class="nav-links">
-            <a href="index.html" data-page="index.html">Home</a>
-            <a href="about.html" data-page="about.html">About</a>
-            <a href="detect.html" data-page="detect.html">Detector</a>
-            <a class="nav-cta" href="detect.html">Try it →</a>
-          </div>
+            <div class="logo">
+                <div class="logo-mark">
+                    <span></span><span></span><span></span><span></span>
+                </div>
+                Cadence
+            </div>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/about.html">About</a>
+                <a href="/detect.html" class="nav-cta">Try the Detector</a>
+            </div>
         </div>
-      </nav>
+    </nav>
 
-      <header class="page-hero wrap">
-        <div class="ribbon animated" data-generate data-bars="48" aria-hidden="true"></div>
-        <p class="eyebrow">Detector</p>
-        <h1>Upload a clip. Get a verdict, a confidence score, and a heatmap.</h1>
-      </header>
+    <!-- Main Content -->
+    <section class="wrap">
+        <h1>Audio Deepfake Forensics</h1>
+        <p>Upload a .wav file to analyze its authenticity and compression provenance.</p>
 
-      <section class="wrap" style="padding-top:0;">
-        <div class="tool-layout">
-
-          <!-- Upload -->
-          <div class="card upload-card">
-            <h3 style="margin-bottom:16px;">Analyse audio</h3>
-
-            <form id="uploadForm">
-              <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose a .wav file">
-                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <div class="dz-title">Drop a .wav file, or click to browse</div>
-                <div class="dz-sub">Sinhala or Tamil speech · mono or stereo</div>
-                <input type="file" id="audioFile" accept=".wav" class="visually-hidden" required>
-              </div>
-
-              <div class="file-chip" id="fileChip">
-                <span id="fileChipName">—</span>
-                <button type="button" id="fileChipClear" aria-label="Remove file">✕</button>
-              </div>
-
-              <div class="form-error" id="formError"></div>
-
-              <button type="submit" class="btn btn-primary" id="analyzeBtn" disabled>Analyse audio</button>
-            </form>
-          </div>
-
-          <!-- Results -->
-          <div>
-            <div class="placeholder-panel" id="placeholderPanel">
-              <div class="ribbon" data-generate data-bars="28" aria-hidden="true"></div>
-              <p style="margin:0;">Choose a file on the left to run a detection. Results — verdict, confidence, and the explainability heatmap — will appear here.</p>
+        <div class="grid-2" style="margin-top: 40px;">
+            <!-- Upload Card -->
+            <div class="card stack">
+                <div class="eyebrow">Audio Upload</div>
+                <p style="font-size: 0.9rem;">Select a Sinhala or Tamil audio file for evaluation.</p>
+                <input type="file" id="audio-upload" accept="audio/wav" style="margin: 20px 0; color: var(--ink-dim);">
+                <button id="analyze-btn" class="btn btn-primary">Run Forensic Analysis</button>
+                <div id="loading" style="display: none; margin-top: 15px; color: var(--warn); font-family: var(--font-mono); font-size: 0.85rem;">
+                    Extracting spectrograms & analyzing...
+                </div>
             </div>
 
-            <div class="spinner-panel" id="spinnerPanel">
-              <div class="spinner"></div>
-              <p style="margin:0;" id="spinnerText">Running the model…</p>
+            <!-- Results Card (Hidden by default) -->
+            <div class="card stack" id="results-card" style="display: none;">
+                <div class="eyebrow">Detection Verdict</div>
+                <h2 id="verdict-text" style="font-size: 2.5rem; margin-bottom: 10px;"></h2>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <div class="pill"><span class="dot"></span><span id="confidence-text"></span></div>
+                    <div class="pill"><span class="dot"></span><span id="compression-text"></span></div>
+                </div>
+
+                <div class="hairline" style="margin: 30px 0 20px;"></div>
+
+                <div class="eyebrow">Explainability Heatmap</div>
+                <img id="heatmap-img" src="" alt="Grad-CAM Heatmap" style="border-radius: var(--radius-sm); width: 100%; border: 1px solid var(--border);">
+
+                <!-- THE NEW FORENSIC TEXT BOX -->
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                    <div class="eyebrow">Plain-English Summary</div>
+                    <p id="explanation-text" style="font-size: 0.92rem; line-height: 1.6; margin: 0;"></p>
+                </div>
             </div>
-
-            <div class="results" id="results">
-
-              <div class="card verdict-card">
-                <div class="verdict-badge" id="verdictBadge">
-                  <span class="vb-label" id="verdictLabel">—</span>
-                  <span class="vb-sub">VERDICT</span>
-                </div>
-                <div class="verdict-meta">
-                  <div class="conf-row">
-                    <span class="conf-value" id="confValue">—</span>
-                    <span class="mono" style="color:var(--muted); font-size:0.8rem;">confidence</span>
-                  </div>
-                  <div class="conf-bar-track"><div class="conf-bar-fill" id="confFill"></div></div>
-                  <div class="verdict-file" id="verdictFile"></div>
-                </div>
-              </div>
-
-              <div class="aux-grid" id="auxGrid">
-                <div class="card aux-card" id="provenanceCard" style="display:none;">
-                  <span class="aux-label">Compression provenance</span>
-                  <span class="aux-value" id="provenanceValue">—</span>
-                </div>
-                <div class="card aux-card" id="calibrationCard" style="display:none;">
-                  <span class="aux-label">Calibration reliability</span>
-                  <span class="aux-value" id="calibrationValue">—</span>
-                </div>
-              </div>
-
-              <figure class="card heatmap-card">
-                <img id="heatmapImage" src="" alt="Grad-CAM heatmap over the input spectrogram">
-                <figcaption>Explainability heatmap — brighter regions influenced the prediction most.</figcaption>
-              </figure>
-
-              <div class="card" id="stabilityCard" style="display:none;">
-                <h3 style="margin-bottom:4px;">Explanation stability</h3>
-                <p style="font-size:0.88rem; margin-bottom:0;">Same clip, before and after compression — checking whether the model is looking at the same regions.</p>
-                <div class="stability-imgs">
-                  <figure>
-                    <img id="stabilityClean" src="" alt="Heatmap on clean audio">
-                    <figcaption>CLEAN</figcaption>
-                  </figure>
-                  <figure>
-                    <img id="stabilityCompressed" src="" alt="Heatmap on compressed audio">
-                    <figcaption>COMPRESSED</figcaption>
-                  </figure>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
         </div>
-      </section>
+    </section>
 
-      <footer class="site-footer">
-        <div class="wrap">
-          <p>Cadence — a research prototype for compression-aware, explainable audio deepfake detection.</p>
-          <div class="footer-links">
-            <a href="index.html">Home</a>
-            <a href="about.html">About</a>
-          </div>
-        </div>
-      </footer>
-
-      <script src="/static/app.js"></script>
-      <script src="/static/detect.js"></script>
-    </body>
-  </html>
+    <!-- Connect the logic -->
+    <script src="/static/detect.js"></script>
+</body>
+</html>
