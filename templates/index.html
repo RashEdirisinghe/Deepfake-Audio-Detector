@@ -1,73 +1,209 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Deepfake Detector</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 50px; text-align: center; }
-        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
-        h1 { color: #333; }
-        input[type="file"] { margin: 20px 0; }
-        button { background-color: #0056b3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #004494; }
-        #results { margin-top: 30px; display: none; }
-        img { max-width: 100%; border-radius: 5px; margin-top: 15px; }
-        .real { color: green; font-weight: bold; }
-        .fake { color: red; font-weight: bold; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h1>Deepfake Audio Detector</h1>
-    <p>Upload a Sinhala or Tamil .wav file to analyze</p>
-
-    <form id="uploadForm">
-        <input type="file" id="audioFile" accept=".wav" required>
-        <br>
-        <button type="submit">Analyze Audio</button>
-    </form>
-
-    <div id="results">
-        <h2>Analysis Complete</h2>
-        <p>Prediction: <span id="predictionText"></span></p>
-        <p>Confidence: <span id="confidenceText"></span></p>
-        <h3>Explainability Heatmap</h3>
-        <img id="heatmapImage" src="" alt="Grad-CAM Heatmap">
-    </div>
-</div>
-
-<script>
-    document.getElementById('uploadForm').onsubmit = async function(e) {
-        e.preventDefault();
-
-        let formData = new FormData();
-        formData.append("file", document.getElementById('audioFile').files[0]);
-
-        // Send the file to our Python Flask backend
-        let response = await fetch('/predict', { method: "POST", body: formData });
-        let result = await response.json();
-
-        if (result.error) {
-            alert(result.error);
-        } else {
-            // Display the results
-            document.getElementById('results').style.display = 'block';
-            let predSpan = document.getElementById('predictionText');
-
-            if (result.prediction === "Real") {
-                predSpan.innerHTML = "<span class='real'>REAL HUMAN SPEECH</span>";
-            } else {
-                predSpan.innerHTML = "<span class='fake'>SYNTHETIC / DEEPFAKE</span>";
-            }
-
-            document.getElementById('confidenceText').innerText = result.confidence + "%";
-            // Add a timestamp query to bypass browser image caching
-            document.getElementById('heatmapImage').src = result.heatmap_url + "?t=" + new Date().getTime();
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Cadence — Audio Deepfake Forensics for Sinhala &amp; Tamil</title>
+      <meta name="description" content="A compression-aware, explainable detector for synthetic speech in Sinhala and Tamil audio.">
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+      <link rel="stylesheet" href="/static/style.css">
+      <style>
+        .hero {
+          padding: 34px 0 70px;
         }
-    };
-</script>
+        .hero-ribbon-wrap { --ribbon-h: 64px; margin-bottom: 46px; opacity: 0.9; }
+        .hero h1 { max-width: 780px; }
+        .hero .lede { max-width: 560px; font-size: 1.08rem; }
+        .hero-ctas { display: flex; gap: 14px; margin: 34px 0 44px; flex-wrap: wrap; }
+        .chip-row { display: flex; gap: 10px; flex-wrap: wrap; }
 
-</body>
-</html>
+        .problem {
+          background: var(--bg-soft);
+          border-top: 1px solid var(--border);
+          border-bottom: 1px solid var(--border);
+        }
+        .problem .grid-2 { align-items: start; }
+        .problem .card { background: var(--surface); }
+
+        .feature-card { position: relative; }
+        .feature-index {
+          font-family: var(--font-mono);
+          font-size: 0.78rem;
+          color: var(--muted);
+          margin-bottom: 14px;
+          display: block;
+        }
+        .feature-card h3 { margin-bottom: 8px; }
+        .feature-card p { font-size: 0.93rem; margin-bottom: 0; }
+
+        .pipeline-strip {
+          display: flex;
+          align-items: center;
+          gap: 0;
+          overflow-x: auto;
+          padding: 6px 2px 18px;
+          margin-top: 36px;
+        }
+        .pipe-step {
+          flex: 0 0 auto;
+          width: 168px;
+          padding: 16px 16px 18px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-sm);
+          background: var(--surface);
+          font-size: 0.82rem;
+        }
+        .pipe-step .mono { font-size: 0.7rem; color: var(--muted); display: block; margin-bottom: 8px; }
+        .pipe-arrow { flex: 0 0 auto; width: 28px; text-align: center; color: var(--border-hi); font-size: 1.1rem; }
+
+        .cta-band {
+          text-align: center;
+          background:
+            radial-gradient(ellipse 600px 300px at 50% 0%, rgba(194,49,126,0.14), transparent 70%),
+            var(--surface);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-lg);
+          padding: 64px 32px;
+        }
+        .cta-band h2 { max-width: 620px; margin: 0 auto 14px; }
+        .cta-band p { max-width: 520px; margin: 0 auto 28px; }
+      </style>
+    </head>
+
+    <body>
+
+      <nav class="site-nav">
+        <div class="wrap">
+          <a class="logo" href="index.html">
+            <span class="logo-mark"><span></span><span></span><span></span><span></span></span>
+            Cadence
+          </a>
+          <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+          <div class="nav-links">
+            <a href="index.html" data-page="index.html">Home</a>
+            <a href="about.html" data-page="about.html">About</a>
+            <a href="detect.html" data-page="detect.html">Detector</a>
+            <a class="nav-cta" href="detect.html">Try it →</a>
+          </div>
+        </div>
+      </nav>
+
+      <header class="hero wrap">
+        <div class="ribbon hero-ribbon-wrap animated" data-generate data-bars="64" aria-hidden="true"></div>
+
+        <p class="eyebrow">Sinhala &amp; Tamil · Speech Forensics</p>
+        <h1>Detecting synthetic speech after it's been through the network, not before.</h1>
+        <p class="lede">Cadence classifies Sinhala and Tamil audio as real or synthetic under the same low-bitrate compression that messaging apps apply in practice — and shows, region by region, what it heard.</p>
+
+        <div class="hero-ctas">
+          <a class="btn btn-primary" href="detect.html">Analyse a clip</a>
+          <a class="btn btn-ghost" href="about.html">Read the research brief</a>
+        </div>
+
+        <div class="chip-row">
+          <span class="pill"><span class="dot" style="color:var(--real)"></span>Real / synthetic classification</span>
+          <span class="pill"><span class="dot" style="color:var(--warn)"></span>Compression-aware</span>
+          <span class="pill"><span class="dot" style="color:var(--grad-2)"></span>Grad-CAM explainability</span>
+        </div>
+      </header>
+
+      <section class="problem">
+        <div class="wrap grid-2">
+          <div>
+            <p class="eyebrow">The gap</p>
+            <h2>Clean-audio benchmarks don't survive contact with a phone call.</h2>
+            <p>Most deepfake detectors are trained and tested on studio-clean recordings. Real audio arrives compressed, re-encoded, and lossy — and detector accuracy is known to drop once it does. Add a low-resource language on top, and the gap between benchmark and deployment gets wider still.</p>
+          </div>
+          <div class="card">
+            <h3 style="margin-bottom:14px;">What Cadence adds</h3>
+            <p style="margin-bottom:12px; font-size:0.94rem;">Four things most detectors handle in isolation, combined into one pipeline:</p>
+            <div class="stack" style="gap:10px;">
+              <div class="pill" style="justify-content:flex-start;">detects fake speech</div>
+              <div class="pill" style="justify-content:flex-start;">tests robustness under compression</div>
+              <div class="pill" style="justify-content:flex-start;">explains its own decisions</div>
+              <div class="pill" style="justify-content:flex-start;">checks whether those explanations hold up</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="wrap">
+        <p class="eyebrow">System features</p>
+        <h2>Five capabilities, one spectrogram at a time.</h2>
+        <div class="grid-3" style="margin-top:40px;">
+          <div class="card feature-card">
+            <span class="feature-index mono">01 / Detection</span>
+            <h3>Real vs. synthetic</h3>
+            <p>A CNN / ResNet-style backbone operating on Mel spectrograms classifies each clip as human or synthesised speech.</p>
+          </div>
+          <div class="card feature-card">
+            <span class="feature-index mono">02 / Provenance</span>
+            <h3>Compression provenance</h3>
+            <p>A second head estimates whether the input is clean, lightly compressed, or heavily compressed — so a verdict can be read in context.</p>
+          </div>
+          <div class="card feature-card">
+            <span class="feature-index mono">03 / Explainability</span>
+            <h3>Grad-CAM heatmaps</h3>
+            <p>Time-frequency regions that drove the decision are highlighted directly on the spectrogram, for forensic inspection.</p>
+          </div>
+          <div class="card feature-card">
+            <span class="feature-index mono">04 / Calibration</span>
+            <h3>Confidence you can trust</h3>
+            <p>Reported confidence is evaluated for reliability — a model that's certain and wrong under compression isn't useful in the field.</p>
+          </div>
+          <div class="card feature-card">
+            <span class="feature-index mono">05 / Stability</span>
+            <h3>Explanation stability</h3>
+            <p>The same clip, clean and compressed, is compared to check whether the highlighted regions stay consistent — or drift.</p>
+          </div>
+          <div class="card feature-card" style="display:flex; flex-direction:column; justify-content:center; align-items:flex-start; background:transparent; border-style:dashed;">
+            <h3 style="margin-bottom:10px;">See it on your own audio</h3>
+            <p style="margin-bottom:16px;">Upload a .wav clip and walk through a live analysis.</p>
+            <a class="btn btn-ghost" href="detect.html">Open the detector →</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="wrap" style="padding-top:0;">
+        <p class="eyebrow">Pipeline</p>
+        <h2>From raw waveform to forensic verdict.</h2>
+        <div class="pipeline-strip">
+          <div class="pipe-step"><span class="mono">STEP 1</span>Collect real &amp; synthetic Sinhala / Tamil audio</div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="mono">STEP 2</span>Simulate real-world Opus-style compression</div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="mono">STEP 3</span>Convert to log-Mel spectrograms</div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="mono">STEP 4</span>CNN / ResNet-18 classifier, single-channel</div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="mono">STEP 5</span>Auxiliary head for compression provenance</div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="mono">STEP 6</span>Grad-CAM heatmap generation</div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="mono">STEP 7</span>Confidence calibration</div>
+        </div>
+      </section>
+
+      <section class="wrap">
+        <div class="cta-band">
+          <h2>Upload a clip. See what the model sees.</h2>
+          <p>The detector runs against your own backend — drop in a .wav file and get a verdict, a confidence score, and a heatmap in seconds.</p>
+          <a class="btn btn-primary" href="detect.html">Go to the detector</a>
+        </div>
+      </section>
+
+      <footer class="site-footer">
+        <div class="wrap">
+          <p>Cadence — a research prototype for compression-aware, explainable audio deepfake detection.</p>
+          <div class="footer-links">
+            <a href="about.html">About the project</a>
+            <a href="detect.html">Detector</a>
+          </div>
+        </div>
+      </footer>
+
+      <script src="app.js"></script>
+    </body>
+  </html>
