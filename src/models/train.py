@@ -62,7 +62,7 @@ def train_and_validate(train_manifest, val_manifest, spectrogram_dir, epochs=10,
 
     for epoch in range(epochs):
         # =======================
-        #      TRAINING PHASE
+        #       TRAINING PHASE
         # =======================
         model.train()
         running_loss = 0.0
@@ -121,4 +121,13 @@ def train_and_validate(train_manifest, val_manifest, spectrogram_dir, epochs=10,
 
 
 if __name__ == "__main__":
-    logger.info("Training script ready to run.")
+    logger.info("=== Starting Multi-Task Deepfake Detector Training ===")
+    
+    train_and_validate(
+        train_manifest="data/metadata/train_manifest.csv",  
+        val_manifest="data/metadata/val_manifest.csv",    
+        spectrogram_dir="data/spectrograms",
+        epochs=50, # BUMP THIS UP! (30 to 50 is a great range)
+        batch_size=16,
+        learning_rate=1e-4
+    )

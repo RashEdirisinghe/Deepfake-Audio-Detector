@@ -76,5 +76,24 @@ def generate_heatmap(model_path, audio_path, output_path):
 
 
 if __name__ == "__main__":
-    # Test block (Will run once we have a trained model and audio)
-    logger.info("Grad-CAM Explainability module ready.")
+    logger.info("=== Generating Grad-CAM Heatmaps ===")
+    
+    # Path to the weights your training script is currently saving!
+    model_weights = "weights/best_deepfake_resnet.pth"
+    
+    # Let's test it on one Real file and one Fake file
+    # (Note: Check your data/real/tamil/ folder and replace 'real_00000.wav' with a filename that actually exists there!)
+    test_files = [
+        ("data/real/tamil/real_00000.wav", "plots/heatmap_real_tamil.png"),
+        ("data/fake/tamil/fake_tam_0001.wav", "plots/heatmap_fake_tamil.png"),
+        ("data/compressed/fake_tamil_heavy/fake_tam_0001.wav", "plots/heatmap_fake_tamil_heavy.png")
+    ]
+    
+    for audio_in, image_out in test_files:
+        if os.path.exists(audio_in):
+            logger.info(f"Processing heatmap for {audio_in}...")
+            generate_heatmap(model_weights, audio_in, image_out)
+        else:
+            logger.warning(f"Could not find {audio_in}. Please check the filename!")
+            
+    logger.info("=== Heatmap Generation Complete ===")

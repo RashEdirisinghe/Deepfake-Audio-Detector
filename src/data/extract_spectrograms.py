@@ -2,22 +2,22 @@ import os
 import glob
 import torch
 import torchaudio
+import librosa
 from src.utils.logger import get_logger
 
 logger = get_logger("spectrogram_extractor")
 
 
 def audio_to_mel_spectrogram(audio_path, target_sr=16000, n_mels=128, n_fft=2048, hop_length=512):
-    """Loads an audio file and converts it to a log-Mel spectrogram tensor."""
+    """Loads an audio file using librosa and converts it to a log-Mel spectrogram tensor."""
     try:
-        waveform, sr = torchaudio.load(audio_path)
+        # Load audio using librosa to completely bypass torchaudio/torchcodec backend & DLL issues
+        y, sr = librosa.load(audio_path, sr=target_sr)
+        
+        # Convert numpy array to torch tensor and add the channel dimension (1, length)
+        waveform = torch.tensor(y, dtype=torch.float32).unsqueeze(0)
 
-        # Resample if the audio isn't 16kHz
-        if sr != target_sr:
-            resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=target_sr)
-            waveform = resampler(waveform)
-
-        # Convert stereo to mono (ResNets expect a 1-channel input)
+        # Convert stereo to mono if needed (ResNets expect a 1-channel input)
         if waveform.shape[0] > 1:
             waveform = torch.mean(waveform, dim=0, keepdim=True)
 
@@ -57,7 +57,7 @@ def process_directory(input_dir, output_dir):
         filename = os.path.basename(file_path).replace(".wav", ".pt")
         out_path = os.path.join(output_dir, filename)
 
-        # Skip if already processed (great for if the script crashes and you have to restart)
+        # Skip if already processed
         if os.path.exists(out_path):
             continue
 
@@ -71,10 +71,16 @@ def process_directory(input_dir, output_dir):
 if __name__ == "__main__":
     logger.info("=== Starting Mel Spectrogram Extraction Pipeline ===")
 
-    # We will expand this list later once the real data and compressed data are ready!
     directories_to_process = [
-        ("data/fake/tamil", "data/spectrograms/fake/tamil"),
-        ("data/fake/sinhala", "data/spectrograms/fake/sinhala")
+        # Compressed Fake Data (Mild & Heavy)
+        ("data/compressed/fake_tamil_mild", "data/spectrograms/compressed/fake_tamil_mild"),
+        ("data/compressed/fake_sinhala_mild", "data/spectrograms/compressed/fake_sinhala_mild"),
+        ("data/compressed/fake_tamil_heavy", "data/spectrograms/compressed/fake_tamil_heavy"),
+        ("data/compressed/fake_sinhala_heavy", "data/spectrograms/compressed/fake_sinhala_heavy"),
+        
+        # Real Data
+        ("data/real/tamil", "data/spectrograms/real/tamil"),
+        ("data/real/sinhala", "data/spectrograms/real/sinhala")
     ]
 
     for in_dir, out_dir in directories_to_process:
