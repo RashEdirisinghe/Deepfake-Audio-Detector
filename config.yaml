@@ -16,5 +16,5 @@ data_paths:
 
 training:
   batch_size: 16
-  epochs: 20
+  epochs: 50
   learning_rate: 0.0001
