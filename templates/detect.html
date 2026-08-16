@@ -17,9 +17,10 @@
                 Cadence
             </div>
             <div class="nav-links">
-                <a href="/">Home</a>
-                <a href="/about.html">About</a>
-                <a href="/detect.html" class="nav-cta">Try the Detector</a>
+                <!-- THE FIX: Added data-page attributes so the CSS highlights the active tab -->
+                <a href="/" data-page="index.html">Home</a>
+                <a href="/about.html" data-page="about.html">About</a>
+                <a href="/detect.html" class="nav-cta" data-page="detect.html">Try the Detector</a>
             </div>
         </div>
     </nav>
@@ -32,9 +33,10 @@
         <div class="grid-2" style="margin-top: 40px;">
             <!-- Upload Card -->
             <div class="card stack">
-                <div class="eyebrow">Audio Upload</div>
+                <!-- THE FIX: Accessibility label attached to the input field -->
+                <label for="audio-upload" class="eyebrow" style="margin-top: 0; cursor: pointer;">Audio Upload</label>
                 <p style="font-size: 0.9rem;">Select a Sinhala or Tamil audio file for evaluation.</p>
-                <input type="file" id="audio-upload" accept="audio/wav" style="margin: 20px 0; color: var(--ink-dim);">
+                <input type="file" id="audio-upload" accept="audio/*, .wav, .mp3, .m4a, .ogg, .flac, .aac, .opus, .webm" style="margin: 20px 0; color: var(--ink-dim);">
                 <button id="analyze-btn" class="btn btn-primary">Run Forensic Analysis</button>
                 <div id="loading" style="display: none; margin-top: 15px; color: var(--warn); font-family: var(--font-mono); font-size: 0.85rem;">
                     Extracting spectrograms & analyzing...
@@ -43,7 +45,7 @@
 
             <!-- Results Card (Hidden by default) -->
             <div class="card stack" id="results-card" style="display: none;">
-                <div class="eyebrow">Detection Verdict</div>
+                <div class="eyebrow" style="margin-top: 0;">Detection Verdict</div>
                 <h2 id="verdict-text" style="font-size: 2.5rem; margin-bottom: 10px;"></h2>
 
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -56,7 +58,6 @@
                 <div class="eyebrow">Explainability Heatmap</div>
                 <img id="heatmap-img" src="" alt="Grad-CAM Heatmap" style="border-radius: var(--radius-sm); width: 100%; border: 1px solid var(--border);">
 
-                <!-- THE NEW FORENSIC TEXT BOX -->
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
                     <div class="eyebrow">Plain-English Summary</div>
                     <p id="explanation-text" style="font-size: 0.92rem; line-height: 1.6; margin: 0;"></p>
@@ -65,7 +66,8 @@
         </div>
     </section>
 
-    <!-- Connect the logic -->
+    <!-- THE FIX: Added app.js so your mobile navigation toggle actually functions on this page -->
+    <script src="/static/app.js"></script>
     <script src="/static/detect.js"></script>
 </body>
 </html>

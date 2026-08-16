@@ -10,59 +10,25 @@
       <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
       <link rel="stylesheet" href="/static/style.css">
       <style>
-        .hero {
-          padding: 34px 0 70px;
-        }
+        .hero { padding: 34px 0 70px; }
         .hero-ribbon-wrap { --ribbon-h: 64px; margin-bottom: 46px; opacity: 0.9; }
         .hero h1 { max-width: 780px; }
         .hero .lede { max-width: 560px; font-size: 1.08rem; }
         .hero-ctas { display: flex; gap: 14px; margin: 34px 0 44px; flex-wrap: wrap; }
         .chip-row { display: flex; gap: 10px; flex-wrap: wrap; }
 
-        .problem {
-          background: var(--bg-soft);
-          border-top: 1px solid var(--border);
-          border-bottom: 1px solid var(--border);
-        }
+        .problem { background: var(--bg-soft); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
         .problem .grid-2 { align-items: start; }
         .problem .card { background: var(--surface); }
 
         .feature-card { position: relative; }
-        .feature-index {
-          font-family: var(--font-mono);
-          font-size: 0.78rem;
-          color: var(--muted);
-          margin-bottom: 14px;
-          display: block;
-        }
+        .feature-index { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); margin-bottom: 14px; display: block; }
         .feature-card h3 { margin-bottom: 8px; }
         .feature-card p { font-size: 0.93rem; margin-bottom: 0; }
 
-        .pipeline-strip {
-          display: flex;
-          align-items: center;
-          gap: 0;
-          overflow-x: auto;
-          padding: 6px 2px 18px;
-          margin-top: 36px;
-        }
-        .pipe-step {
-          flex: 0 0 auto;
-          width: 168px;
-          padding: 16px 16px 18px;
-          border: 1px solid var(--border);
-          border-radius: var(--radius-sm);
-          background: var(--surface);
-          font-size: 0.82rem;
-        }
-        .pipe-step .mono { font-size: 0.7rem; color: var(--muted); display: block; margin-bottom: 8px; }
-        .pipe-arrow { flex: 0 0 auto; width: 28px; text-align: center; color: var(--border-hi); font-size: 1.1rem; }
-
         .cta-band {
           text-align: center;
-          background:
-            radial-gradient(ellipse 600px 300px at 50% 0%, rgba(194,49,126,0.14), transparent 70%),
-            var(--surface);
+          background: radial-gradient(ellipse 600px 300px at 50% 0%, rgba(194,49,126,0.14), transparent 70%), var(--surface);
           border: 1px solid var(--border);
           border-radius: var(--radius-lg);
           padding: 64px 32px;
@@ -73,19 +39,18 @@
     </head>
 
     <body>
-
       <nav class="site-nav">
         <div class="wrap">
-          <a class="logo" href="index.html">
+          <a class="logo" href="/">
             <span class="logo-mark"><span></span><span></span><span></span><span></span></span>
             Cadence
           </a>
           <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
           <div class="nav-links">
-            <a href="index.html" data-page="index.html">Home</a>
-            <a href="about.html" data-page="about.html">About</a>
-            <a href="detect.html" data-page="detect.html">Detector</a>
-            <a class="nav-cta" href="detect.html">Try it →</a>
+            <a href="/" data-page="index.html">Home</a>
+            <a href="/about.html" data-page="about.html">About</a>
+            <a href="/detect.html" data-page="detect.html">Detector</a>
+            <a class="nav-cta" href="/detect.html">Try it →</a>
           </div>
         </div>
       </nav>
@@ -98,8 +63,8 @@
         <p class="lede">Cadence classifies Sinhala and Tamil audio as real or synthetic under the same low-bitrate compression that messaging apps apply in practice — and shows, region by region, what it heard.</p>
 
         <div class="hero-ctas">
-          <a class="btn btn-primary" href="detect.html">Analyse a clip</a>
-          <a class="btn btn-ghost" href="about.html">Read the research brief</a>
+          <a class="btn btn-primary" href="/detect.html">Analyse a clip</a>
+          <a class="btn btn-ghost" href="/about.html">Read the research brief</a>
         </div>
 
         <div class="chip-row">
@@ -161,7 +126,7 @@
           <div class="card feature-card" style="display:flex; flex-direction:column; justify-content:center; align-items:flex-start; background:transparent; border-style:dashed;">
             <h3 style="margin-bottom:10px;">See it on your own audio</h3>
             <p style="margin-bottom:16px;">Upload a .wav clip and walk through a live analysis.</p>
-            <a class="btn btn-ghost" href="detect.html">Open the detector →</a>
+            <a class="btn btn-ghost" href="/detect.html">Open the detector →</a>
           </div>
         </div>
       </section>
@@ -190,7 +155,7 @@
         <div class="cta-band">
           <h2>Upload a clip. See what the model sees.</h2>
           <p>The detector runs against your own backend — drop in a .wav file and get a verdict, a confidence score, and a heatmap in seconds.</p>
-          <a class="btn btn-primary" href="detect.html">Go to the detector</a>
+          <a class="btn btn-primary" href="/detect.html">Go to the detector</a>
         </div>
       </section>
 
@@ -198,12 +163,13 @@
         <div class="wrap">
           <p>Cadence — a research prototype for compression-aware, explainable audio deepfake detection.</p>
           <div class="footer-links">
-            <a href="about.html">About the project</a>
-            <a href="detect.html">Detector</a>
+            <a href="/about.html">About the project</a>
+            <a href="/detect.html">Detector</a>
           </div>
         </div>
       </footer>
 
-      <script src="app.js"></script>
+      <!-- THE FIX: Pointing properly to the static folder -->
+      <script src="/static/app.js"></script>
     </body>
   </html>
